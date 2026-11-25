@@ -1,0 +1,125 @@
+name: vinheria
+
+networks:
+  vinheria:
+    ipam:
+      config:
+        - subnet: 10.20.0.0/24
+          gateway: 10.20.0.1
+          # Faixa usada pelo Docker antes do DHCP. O dnsmasq entrega 10.20.0.100 a 10.20.0.150.
+          ip_range: 10.20.0.16/28
+
+volumes:
+  jenkins_home:
+
+services:
+  # Servidor DHCP + DNS (dnsmasq) da rede vinheria.local
+  dns-dhcp:
+    build: infra/dns-dhcp
+    container_name: vinheria-dns-dhcp
+    cap_add: [NET_ADMIN, NET_RAW]
+    networks:
+      vinheria:
+        ipv4_address: 10.20.0.2
+
+  # Gera, uma única vez, a CA interna e os certificados TLS (pasta ./certs, fora do Git)
+  pki:
+    build: infra/servicos
+    entrypoint: ["/bin/sh", "/pki/gerar-certificados.sh"]
+    network_mode: none
+    volumes:
+      - ./infra/pki:/pki:ro
+      - ./certs:/certs
+
+  estoque:
+    build: infra/servicos
+    container_name: vinheria-estoque
+    hostname: estoque
+    cap_add: [NET_ADMIN]
+    environment:
+      NOME_HOST: estoque
+      ESPERAR: /app/estoque/server.js
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no arquivo .env}
+      TLS_CERT: /certs/estoque.crt
+      TLS_KEY: /certs/estoque.key
+    command: ["node", "--watch", "/app/estoque/server.js"]
+    volumes:
+      - ./publicacao:/app:ro
+      - ./certs:/certs:ro
+      - ./capturas:/capturas
+    networks: [vinheria]
+    depends_on:
+      dns-dhcp:
+        condition: service_started
+      pki:
+        condition: service_completed_successfully
+
+  pedidos:
+    build: infra/servicos
+    container_name: vinheria-pedidos
+    hostname: pedidos
+    cap_add: [NET_ADMIN]
+    environment:
+      NOME_HOST: pedidos
+      ESPERAR: /app/pedidos/server.js
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no arquivo .env}
+      ESTOQUE_URL: ${ESTOQUE_URL:-https://estoque.vinheria.local:8443}
+      TLS_CERT: /certs/pedidos.crt
+      TLS_KEY: /certs/pedidos.key
+      NODE_EXTRA_CA_CERTS: /certs/ca.crt
+    command: ["node", "--watch", "/app/pedidos/server.js"]
+    volumes:
+      - ./publicacao:/app:ro
+      - ./certs:/certs:ro
+      - ./capturas:/capturas
+    networks: [vinheria]
+    depends_on:
+      dns-dhcp:
+        condition: service_started
+      pki:
+        condition: service_completed_successfully
+
+  # Máquina cliente da rede (recebe IP do pool DHCP), usada para os testes com curl
+  cliente:
+    build: infra/servicos
+    container_name: vinheria-cliente
+    hostname: cliente
+    cap_add: [NET_ADMIN]
+    environment:
+      NOME_HOST: cliente
+    command: ["sleep", "infinity"]
+    volumes:
+      - ./certs:/certs:ro
+    networks: [vinheria]
+    depends_on: [dns-dhcp]
+
+  jenkins:
+    build: infra/jenkins
+    container_name: vinheria-jenkins
+    environment:
+      JENKINS_ADMIN_SENHA: ${JENKINS_ADMIN_SENHA:?defina JENKINS_ADMIN_SENHA no arquivo .env}
+    ports:
+      - "8081:8080"
+    dns: [10.20.0.2]
+    volumes:
+      - .:/repo:ro
+      - ./publicacao:/publicacao
+      - jenkins_home:/var/jenkins_home
+    networks:
+      vinheria:
+        ipv4_address: 10.20.0.3
+    depends_on: [dns-dhcp]
+
+  # Wireshark no navegador (http://localhost:3000) para abrir as capturas. Só sobe com --profile analise.
+  wireshark:
+    image: lscr.io/linuxserver/wireshark:latest
+    container_name: vinheria-wireshark
+    profiles: [analise]
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: America/Sao_Paulo
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./capturas:/capturas

@@ -1,0 +1,36 @@
+jenkins:
+  systemMessage: "Vinheria Agnello: pipeline de deploy dos microsserviços Pedidos e Estoque"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: ${JENKINS_ADMIN_SENHA}
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: true
+
+jobs:
+  - script: |
+      pipelineJob('vinheria-deploy') {
+        description('Build e deploy dos microsserviços Pedidos e Estoque da Vinheria Agnello')
+        properties {
+          pipelineTriggers {
+            triggers {
+              pollSCM { scmpoll_spec('H/2 * * * *') }
+            }
+          }
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('file:///repo') }
+                branch('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+          }
+        }
+      }
