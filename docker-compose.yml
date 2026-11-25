@@ -102,6 +102,8 @@ services:
     container_name: vinheria-jenkins
     environment:
       JENKINS_ADMIN_SENHA: ${JENKINS_ADMIN_SENHA:?defina JENKINS_ADMIN_SENHA no arquivo .env}
+      TZ: America/Sao_Paulo
+      JAVA_OPTS: -Djenkins.install.runSetupWizard=false -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true -Duser.timezone=America/Sao_Paulo
     ports:
       - "8081:8080"
     dns: [10.20.0.2]
