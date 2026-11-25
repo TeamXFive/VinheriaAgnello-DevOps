@@ -27,7 +27,7 @@ Para confirmar um pedido, o Pedidos consulta o vinho no Estoque e faz a reserva,
  └────────────────────────────────────────────────────────────────────┘
 ```
 
-- **DHCP:** ao subir, cada microsserviço larga o IP dado pelo Docker e pede um ao dnsmasq, informando o nome do host. Pedidos e Estoque têm reserva (sempre .101 e .102), e o cliente recebe um IP do pool.
+- **DHCP:** ao subir, cada microsserviço larga o IP dado pelo Docker e pede um ao dnsmasq, informando o nome do host. Pedidos e Estoque têm MAC fixo e reserva por MAC (sempre .101 e .102), e o cliente recebe um IP do pool.
 - **DNS:** o dnsmasq registra cada cliente DHCP como `<nome>.vinheria.local`. Os serviços se encontram pelo nome (`estoque.vinheria.local`), nunca pelo IP.
 - **Publicação:** a pasta `publicacao/` faz o papel do diretório do IIS. Os containers dos serviços só rodam o que o Jenkins publicou ali e reiniciam sozinhos a cada novo deploy.
 

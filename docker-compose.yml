@@ -47,7 +47,9 @@ services:
       - ./publicacao:/app:ro
       - ./certs:/certs:ro
       - ./capturas:/capturas
-    networks: [vinheria]
+    networks:
+      vinheria:
+        mac_address: "02:42:0a:14:00:66"   # MAC fixo: a reserva DHCP é feita por ele
     depends_on:
       dns-dhcp:
         condition: service_started
@@ -72,7 +74,9 @@ services:
       - ./publicacao:/app:ro
       - ./certs:/certs:ro
       - ./capturas:/capturas
-    networks: [vinheria]
+    networks:
+      vinheria:
+        mac_address: "02:42:0a:14:00:65"   # MAC fixo: a reserva DHCP é feita por ele
     depends_on:
       dns-dhcp:
         condition: service_started
