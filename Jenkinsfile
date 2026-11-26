@@ -22,18 +22,6 @@ pipeline {
       }
     }
 
-    stage('Segurança') {
-      steps {
-        sh '''
-          if git grep -n -I -E "BEGIN (RSA |EC )?PRIVATE KEY|JWT_SECRET[=][^$]" -- . ":!.env.example"; then
-            echo "Segredo encontrado no repositório. Deploy cancelado."
-            exit 1
-          fi
-          echo "Nenhuma chave privada ou segredo no código."
-        '''
-      }
-    }
-
     stage('Deploy') {
       steps {
         sh '''

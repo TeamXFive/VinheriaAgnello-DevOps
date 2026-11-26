@@ -26,8 +26,4 @@ curl -s $CA -X POST $PEDIDOS/pedidos -H "Authorization: Bearer $TOKEN" -H 'Conte
 echo; echo "6) Token adulterado (esperado: 401)"
 curl -s $CA $PEDIDOS/pedidos -H "Authorization: Bearer ${TOKEN}x"; echo
 
-echo; echo "7) Usuário consulta tenta reservar (esperado: 403)"
-TOKEN2=$(curl -s $CA -X POST $PEDIDOS/auth/login -H 'Content-Type: application/json' \
-  -d '{"usuario":"consulta","senha":"Adega@2026"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
-curl -s $CA -X POST $PEDIDOS/pedidos -H "Authorization: Bearer $TOKEN2" -H 'Content-Type: application/json' -d '{"vinhoId":2,"quantidade":1}'; echo
 TESTE

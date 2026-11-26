@@ -11,7 +11,7 @@ Parte da arquitetura de microsserviços da Vinheria Agnello (definida na Fase 6)
 | **Pedidos** | Login (emite o JWT) e criação de pedidos | `POST /auth/login`, `POST /pedidos`, `GET /pedidos`, `GET /health` |
 | **Estoque** | Disponibilidade e reserva de vinhos | `GET /estoque/vinhos`, `GET /estoque/vinhos/{id}`, `POST /estoque/vinhos/{id}/reserva`, `GET /health` |
 
-Para confirmar um pedido, o Pedidos consulta o vinho no Estoque e faz a reserva, por REST, repassando o token do usuário. O Estoque confere a assinatura e o perfil antes de responder. Cada serviço atende em HTTP (porta 8080) e HTTPS (porta 8443).
+Para confirmar um pedido, o Pedidos consulta o vinho no Estoque e faz a reserva, por REST, repassando o token do usuário. O Estoque confere a assinatura do token antes de responder. Cada serviço atende em HTTP (porta 8080) e HTTPS (porta 8443).
 
 ## Infraestrutura
 
@@ -50,10 +50,9 @@ docker compose up -d --build
 
 ### Usuários de teste
 
-| Usuário | Senha | Perfil |
-|---|---|---|
-| `vendas` | `Vinho@2026` | Pode consultar e reservar |
-| `consulta` | `Adega@2026` | Só consulta (reserva devolve 403) |
+| Usuário | Senha |
+|---|---|
+| `vendas` | `Vinho@2026` |
 
 ### Comandos úteis
 
@@ -69,18 +68,16 @@ docker logs vinheria-dns-dhcp                                    # log de DHCP e
 |---|---|
 | Checkout | Baixa o último commit da `main` |
 | Build | `echo "Deploy da Vinheria"`, confere a sintaxe dos serviços e gera o pacote `.tar.gz` (guardado como artefato) |
-| Segurança | Para o deploy se encontrar chave privada ou segredo no código |
 | Deploy | Copia os serviços para a pasta de publicação e grava `VERSAO.txt` com o build e o commit |
 | Verificação | Chama o `/health` dos dois serviços pelo nome DNS e confere a versão publicada |
 
-O Jenkins é configurado por código (`infra/jenkins/jenkins.yaml`): usuário, permissões e o job já sobem prontos.
+O Jenkins já sobe com o usuário e o job `vinheria-deploy` criados (`infra/jenkins/jenkins.yaml`).
 
 ## Segurança
 
-- **JWT (HS256):** o login devolve um token assinado, válido por 15 minutos, com o usuário e o perfil. Sem token, com token adulterado ou expirado, a resposta é 401; com perfil errado, 403.
-- **Senhas com hash:** guardadas como hash scrypt com sal, comparadas em tempo constante.
-- **HTTPS:** uma CA interna (`infra/pki`) emite os certificados de `pedidos.vinheria.local` e `estoque.vinheria.local`. O Pedidos confia nessa CA e chama o Estoque por HTTPS.
-- **Segredos fora do Git:** `JWT_SECRET` e a senha do Jenkins ficam no `.env`; chaves e certificados em `certs/`. Os dois estão no `.gitignore`, e o pipeline barra o deploy se algum aparecer no código.
+- **JWT (HS256):** o login devolve um token assinado, válido por 15 minutos. O Pedidos repassa o token ao Estoque, que confere a assinatura antes de responder. Sem token, com token adulterado ou expirado, a resposta é 401.
+- **HTTPS:** uma autoridade certificadora interna (`infra/pki`) emite os certificados de `pedidos.vinheria.local` e `estoque.vinheria.local`. O Pedidos confia nessa CA e chama o Estoque por HTTPS.
+- **Segredos fora do Git:** `JWT_SECRET` e a senha do Jenkins ficam no `.env`; chaves e certificados em `certs/`. Os dois estão no `.gitignore`.
 
 ### Demonstração com o Wireshark
 
