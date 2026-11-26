@@ -2,7 +2,7 @@ FROM jenkins/jenkins:lts-jdk21
 
 USER root
 RUN apt-get update \
- && apt-get install -y --no-install-recommends nodejs \
+ && apt-get install -y --no-install-recommends nodejs openssl \
  && rm -rf /var/lib/apt/lists/* \
  && git config --system --add safe.directory '*'
 USER jenkins

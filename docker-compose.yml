@@ -94,6 +94,7 @@ services:
     command: ["sleep", "infinity"]
     volumes:
       - ./certs:/certs:ro
+      - ./testes:/testes:ro
     networks: [vinheria]
     depends_on: [dns-dhcp]
 
@@ -110,6 +111,7 @@ services:
     volumes:
       - .:/repo:ro
       - ./publicacao:/publicacao
+      - ./certs:/certs:ro
       - jenkins_home:/var/jenkins_home
     networks:
       vinheria:

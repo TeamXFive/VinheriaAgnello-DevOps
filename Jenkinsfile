@@ -1,6 +1,11 @@
 pipeline {
   agent any
 
+  options {
+    disableConcurrentBuilds()
+    timeout(time: 15, unit: 'MINUTES')
+  }
+
   environment {
     PUBLICACAO = '/publicacao'
   }
@@ -16,9 +21,16 @@ pipeline {
     stage('Build') {
       steps {
         sh 'echo "Deploy da Vinheria - build ${BUILD_NUMBER}"'
-        sh 'for arquivo in servicos/*/*.js; do node --check "$arquivo" && echo "OK $arquivo"; done'
+        sh 'for arquivo in servicos/*/*.js; do node --check "$arquivo" || exit 1; echo "OK $arquivo"; done'
         sh 'rm -f vinheria-build-*.tar.gz && tar czf vinheria-build-${BUILD_NUMBER}.tar.gz servicos'
         archiveArtifacts artifacts: "vinheria-build-${BUILD_NUMBER}.tar.gz"
+      }
+    }
+
+    stage('Testes') {
+      steps {
+        sh 'node --test testes/jwt.test.js'
+        sh 'node testes/integracao.js'
       }
     }
 
@@ -26,6 +38,7 @@ pipeline {
       steps {
         sh '''
           VERSAO="build ${BUILD_NUMBER} - commit $(git rev-parse --short HEAD) - $(date '+%d/%m/%Y %H:%M')"
+          echo "$VERSAO" > VERSAO_ESPERADA.txt
           for pasta in comum pedidos estoque; do
             mkdir -p "$PUBLICACAO/$pasta"
             cp -R servicos/$pasta/. "$PUBLICACAO/$pasta/"
@@ -41,11 +54,7 @@ pipeline {
 
     stage('Verificação') {
       steps {
-        sh '''
-          sleep 8
-          curl -fsS --retry 5 --retry-delay 3 --retry-all-errors http://estoque.vinheria.local:8080/health; echo
-          curl -fsS --retry 5 --retry-delay 3 --retry-all-errors http://pedidos.vinheria.local:8080/health; echo
-        '''
+        sh 'node scripts/verificar-deploy.js'
       }
     }
   }

@@ -48,11 +48,20 @@ function iniciarServidor(nome, rotas) {
     }
   };
 
-  http.createServer(tratar).listen(8080, () => console.log(`[${nome}] HTTP na porta 8080`));
+  // Porta zero permite que os testes usem portas livres, sem disputar com a demonstração.
+  function escutar(servidor, protocolo, porta) {
+    servidor.listen(Number(porta), process.env.BIND_HOST || '0.0.0.0', () => {
+      const endereco = servidor.address();
+      console.log(`[${nome}] ${protocolo.toUpperCase()} na porta ${endereco.port}`);
+      if (process.send) process.send({ protocolo, porta: endereco.port });
+    });
+  }
+
+  escutar(http.createServer(tratar), 'http', process.env.HTTP_PORT ?? 8080);
 
   if (process.env.TLS_CERT && process.env.TLS_KEY) {
     const certificado = { cert: fs.readFileSync(process.env.TLS_CERT), key: fs.readFileSync(process.env.TLS_KEY) };
-    https.createServer(certificado, tratar).listen(8443, () => console.log(`[${nome}] HTTPS na porta 8443`));
+    escutar(https.createServer(certificado, tratar), 'https', process.env.HTTPS_PORT ?? 8443);
   }
 }
 

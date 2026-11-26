@@ -33,20 +33,72 @@ Para confirmar um pedido, o Pedidos consulta o vinho no Estoque e faz a reserva,
 
 ## Como rodar
 
-Pré-requisito: Docker Desktop.
+Pré-requisitos: Git para clonar o repositório e Docker Desktop em execução, com Docker Compose v2. As APIs rodam dentro da rede Docker; as portas 8080 e 8443 dos microsserviços não são publicadas na máquina host. Os testes do ambiente usam o container cliente.
+
+Na raiz do repositório, crie o `.env` apenas se ele ainda não existir:
 
 ```bash
-cp .env.example .env        # depois troque os dois valores do .env
+cp .env.example .env
+```
+
+Edite os dois valores antes de subir o ambiente:
+
+| Variável | Uso |
+|---|---|
+| `JWT_SECRET` | Segredo longo e aleatório, compartilhado por Pedidos e Estoque para assinar e validar tokens |
+| `JENKINS_ADMIN_SENHA` | Senha do usuário `admin` do Jenkins |
+
+Preserve um `.env` já configurado. Depois execute:
+
+```bash
 docker compose up -d --build
 ```
 
 1. Abra o Jenkins em **http://localhost:8081** (usuário `admin`, senha do `.env`).
-2. O job `vinheria-deploy` verifica o repositório a cada 2 minutos e roda sozinho a cada commit na `main`. Também dá para clicar em **Build Now**.
-3. Depois do primeiro deploy, teste a API a partir da máquina cliente:
+2. Abra o job `vinheria-deploy` e clique em **Build Now** no primeiro uso.
+3. Aguarde o pipeline terminar com sucesso. Os serviços aguardam os arquivos em `publicacao/` e não atendem antes do primeiro deploy.
+4. Execute os testes do ambiente publicado:
 
 ```bash
 ./scripts/testar-api.sh
 ```
+
+O job consulta a cada dois minutos a branch `main` do **repositório local**, montado como `file:///repo` no Jenkins. Alterações precisam estar commitadas na `main` para serem publicadas. Commits existentes somente no GitHub precisam ser trazidos para essa cópia local antes do build. **Build Now** também usa o código commitado, e não alterações ainda sem commit.
+
+Ao atualizar um ambiente existente, registre as mudanças na `main`, execute novamente `docker compose up -d --build` para atualizar as imagens e os volumes montados e então dispare **Build Now**. Isso é necessário, por exemplo, quando a imagem do Jenkins ou os arquivos do Compose mudam.
+
+### Testes e repetibilidade
+
+O script aguarda os dois serviços por até 60 segundos, valida HTTPS com a CA interna e limita cada requisição a cinco segundos. Cada cenário imprime `PASSOU` ou `FALHOU`; qualquer falha faz o comando terminar com código diferente de zero. O login precisa retornar um token antes dos testes autenticados. Nenhum token é impresso.
+
+| Cenário | Resultado esperado |
+|---|---|
+| Pedido sem token e consulta ao Estoque sem token | 401 |
+| Login com senha incorreta | 401 |
+| Login válido | 200, token e validade de 900 segundos |
+| Pedido válido | 201, pedido confirmado, listado e baixa de duas unidades no Estoque |
+| Vinho sem estoque | 409 e disponibilidade zero |
+| Quantidade zero, negativa, fracionária ou texto | 400 |
+| Vinho inexistente | 404 |
+| Token adulterado ou expirado, nos dois serviços | 401 |
+
+Os pedidos e o estoque ficam **em memória**. O teste do ambiente publicado reserva duas unidades do vinho 1 por execução bem-sucedida; após 12 execuções sem reiniciar o Estoque, esse cenário deixa de ter saldo. Reiniciar os serviços apaga pedidos e restaura as quantidades iniciais:
+
+```bash
+docker compose restart estoque pedidos
+./scripts/testar-api.sh
+```
+
+O script aguarda automaticamente os serviços voltarem. Não há persistência em banco de dados.
+
+Para desenvolver e repetir os testes sem consumir o estoque da demonstração, use **Node.js 20 ou superior** e **OpenSSL** disponíveis no PATH:
+
+```bash
+node --test testes/jwt.test.js
+node testes/integracao.js
+```
+
+Não é necessário `npm install`. A integração cria processos separados de Pedidos e Estoque, portas livres na interface de loopback, segredo aleatório e uma CA com certificado temporário. Executa os mesmos cenários por HTTPS, incluindo a comunicação Pedidos → Estoque, verifica a rejeição de CA não confiável e de versão divergente e remove os processos e certificados ao terminar. Os testes isolados não verificam DHCP, DNS ou Jenkins; a verificação do deploy e o script no cliente complementam essa cobertura.
 
 ### Usuários de teste
 
@@ -54,22 +106,32 @@ docker compose up -d --build
 |---|---|
 | `vendas` | `Vinho@2026` |
 
-### Comandos úteis
+### Diagnóstico
 
 ```bash
+docker compose ps                                              # estado dos containers
+docker compose logs --tail=100 pedidos estoque                  # espera de publicação, DHCP e erros da API
+docker compose logs --tail=100 jenkins                          # inicialização do Jenkins
+docker exec vinheria-cliente curl -fsS --connect-timeout 3 --max-time 5 --cacert /certs/ca.crt https://pedidos.vinheria.local:8443/health
+docker exec vinheria-cliente curl -fsS --connect-timeout 3 --max-time 5 --cacert /certs/ca.crt https://estoque.vinheria.local:8443/health
 docker exec vinheria-dns-dhcp cat /var/lib/misc/dnsmasq.leases   # concessões DHCP
 docker exec vinheria-cliente dig +short estoque.vinheria.local   # resolução DNS
 docker logs vinheria-dns-dhcp                                    # log de DHCP e DNS
 ```
+
+Se aparecer “Aguardando /app/...”, confira o primeiro build e o console do job no Jenkins. Se o DNS não resolver, confira as concessões DHCP e os logs de `dns-dhcp`. Uma falha de certificado exige verificar a CA e a validade dos certificados; não desative a validação TLS. Se a porta 8081 estiver ocupada, libere-a ou ajuste o mapeamento no Compose.
 
 ## Pipeline de deploy (Jenkinsfile)
 
 | Etapa | O que faz |
 |---|---|
 | Checkout | Baixa o último commit da `main` |
-| Build | `echo "Deploy da Vinheria"`, confere a sintaxe dos serviços e gera o pacote `.tar.gz` (guardado como artefato) |
+| Build | Confere a sintaxe de cada arquivo, interrompe no primeiro erro e gera o pacote `.tar.gz` (guardado como artefato) |
+| Testes | Executa os testes de JWT e os cenários de integração HTTPS em processos com estado descartável, antes de publicar |
 | Deploy | Copia os serviços para a pasta de publicação e grava `VERSAO.txt` com o build e o commit |
-| Verificação | Chama o `/health` dos dois serviços pelo nome DNS e confere a versão publicada |
+| Verificação | Aguarda `/health` por HTTPS pelo nome DNS, valida a CA e compara a versão de cada serviço com a gerada neste build; falha após 60 segundos sem correspondência |
+
+Builds do mesmo job são executados em sequência para evitar publicação simultânea. O pipeline tem limite total de 15 minutos. A verificação HTTPS usa a pasta `certs/` montada somente para leitura no Jenkins.
 
 O Jenkins já sobe com o usuário e o job `vinheria-deploy` criados (`infra/jenkins/jenkins.yaml`).
 
@@ -105,7 +167,8 @@ O relatório da atividade, com as capturas de tela e a reflexão final, está em
 │   ├── servicos/     # imagem dos serviços (cliente DHCP)
 │   ├── pki/          # geração da CA e dos certificados
 │   └── jenkins/      # Jenkins com o job de deploy pronto
-├── scripts/          # teste da API e captura de tráfego
+├── scripts/          # teste da API, verificação do deploy e captura de tráfego
+├── testes/           # cenários da API, integração isolada e testes do JWT
 ├── docs/            # relatório em PDF e capturas de tela (evidencias/)
 ├── Jenkinsfile
 └── docker-compose.yml
