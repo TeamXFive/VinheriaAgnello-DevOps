@@ -17,8 +17,8 @@ pipeline {
       steps {
         sh 'echo "Deploy da Vinheria - build ${BUILD_NUMBER}"'
         sh 'for arquivo in servicos/*/*.js; do node --check "$arquivo" && echo "OK $arquivo"; done'
-        sh 'tar czf vinheria-build-${BUILD_NUMBER}.tar.gz servicos'
-        archiveArtifacts artifacts: 'vinheria-build-*.tar.gz'
+        sh 'rm -f vinheria-build-*.tar.gz && tar czf vinheria-build-${BUILD_NUMBER}.tar.gz servicos'
+        archiveArtifacts artifacts: "vinheria-build-${BUILD_NUMBER}.tar.gz"
       }
     }
 
