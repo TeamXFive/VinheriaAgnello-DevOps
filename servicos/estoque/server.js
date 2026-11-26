@@ -32,8 +32,6 @@ iniciarServidor('estoque', async (req, res) => {
   if (req.method === 'GET' && !rota[2]) return responder(res, 200, vinho);
 
   if (req.method === 'POST' && rota[2]) {
-    if (usuario.perfil !== 'vendas') return responder(res, 403, { erro: 'perfil sem permissão para reservar' });
-
     const { quantidade } = await lerJson(req);
     if (!Number.isInteger(quantidade) || quantidade < 1) {
       return responder(res, 400, { erro: 'quantidade deve ser um inteiro maior que zero' });

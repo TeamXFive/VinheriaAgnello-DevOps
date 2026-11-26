@@ -87,7 +87,7 @@ O Jenkins já sobe com o usuário e o job `vinheria-deploy` criados (`infra/jenk
 docker compose --profile analise up -d wireshark   # Wireshark em http://localhost:3000
 ```
 
-No Wireshark, abra `/capturas/http.pcap` e use **Follow → HTTP Stream**: a senha do login e o JWT aparecem em texto puro, tanto do cliente para o Pedidos quanto do Pedidos para o Estoque. Quem capturar esse token consegue usá-lo enquanto ele não expirar. Em `/capturas/https.pcap` só aparecem o handshake TLS e dados cifrados (*Application Data*).
+No Wireshark, abra `/capturas/http.pcap` e use **Follow → HTTP Stream**: a senha do login e o JWT aparecem em texto puro, tanto do cliente para o Pedidos quanto do Pedidos para o Estoque. Em `/capturas/https.pcap` só aparecem o handshake TLS e dados cifrados (*Application Data*).
 
 ## Estrutura
 
@@ -100,7 +100,7 @@ No Wireshark, abra `/capturas/http.pcap` e use **Follow → HTTP Stream**: a sen
 │   ├── dns-dhcp/     # dnsmasq (DHCP + DNS)
 │   ├── servicos/     # imagem dos serviços (cliente DHCP)
 │   ├── pki/          # geração da CA e dos certificados
-│   └── jenkins/      # Jenkins configurado por código
+│   └── jenkins/      # Jenkins com o job de deploy pronto
 ├── scripts/          # teste da API e captura de tráfego
 ├── docs/evidencias/  # capturas de tela
 ├── Jenkinsfile

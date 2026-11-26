@@ -10,14 +10,8 @@ const ESTOQUE_URL = process.env.ESTOQUE_URL || 'https://estoque.vinheria.local:8
 // Usuários de teste. A senha é guardada como hash scrypt (sal + hash), nunca em texto puro.
 const usuarios = {
   vendas: {
-    perfil: 'vendas',
     sal: '08a59e805bf38ec0cf6f17c1a3088a76',
     hash: '02132dbc94d8a8d5d5f560162b2ea92bd135c4ff0d941e2127f9529bebf81d71',
-  },
-  consulta: {
-    perfil: 'consulta',
-    sal: '1dd4d80f0b9dd7e17fb64d6c771aef7e',
-    hash: 'efc06c2bd26e54ff6a8d4bce80a013ddf029286c47faf5f234f5d4258bae91c1',
   },
 };
 
@@ -48,7 +42,7 @@ iniciarServidor('pedidos', async (req, res) => {
     const { usuario, senha } = await lerJson(req);
     const cadastro = usuarios[usuario];
     if (!senhaConfere(cadastro, senha)) return responder(res, 401, { erro: 'usuário ou senha inválidos' });
-    return responder(res, 200, { token: gerarToken({ sub: usuario, perfil: cadastro.perfil }, SEGREDO), expiraEm: 900 });
+    return responder(res, 200, { token: gerarToken({ sub: usuario }, SEGREDO), expiraEm: 900 });
   }
 
   const token = tokenDoCabecalho(req);
