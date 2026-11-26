@@ -33,20 +33,28 @@ Para confirmar um pedido, o Pedidos consulta o vinho no Estoque e faz a reserva,
 
 ## Como rodar
 
-Pré-requisito: Docker Desktop.
+Pré-requisitos: **Docker Desktop aberto e rodando** e Git. No Windows, rode os comandos no **Git Bash** (instalado junto com o Git), porque os scripts são `.sh`.
 
 ```bash
-cp .env.example .env        # depois troque os dois valores do .env
+git clone https://github.com/TeamXFive/VinheriaAgnello-DevOps.git
+cd VinheriaAgnello-DevOps
+cp .env.example .env
 docker compose up -d --build
 ```
 
-1. Abra o Jenkins em **http://localhost:8081** (usuário `admin`, senha do `.env`).
-2. O job `vinheria-deploy` verifica o repositório a cada 2 minutos e roda sozinho a cada commit na `main`. Também dá para clicar em **Build Now**.
-3. Depois do primeiro deploy, teste a API a partir da máquina cliente:
+O `.env` guarda a chave que assina os tokens e a senha do Jenkins. Os valores que vêm do `.env.example` já funcionam, não precisa trocar nada.
+
+A primeira subida baixa as imagens e leva alguns minutos. Pedidos e Estoque ficam aguardando o primeiro deploy do Jenkins:
+
+1. Abra o Jenkins em **http://localhost:8081**. Para clicar em **Build Now**, entre com o usuário `admin` e a senha `JENKINS_ADMIN_SENHA` do `.env`.
+2. O job `vinheria-deploy` roda sozinho em até 2 minutos (ele verifica a `main` do repositório local) ou na hora, pelo **Build Now**. Espere o build ficar verde.
+3. Teste a API a partir da máquina cliente da rede:
 
 ```bash
 ./scripts/testar-api.sh
 ```
+
+As portas 8080 e 8443 dos microsserviços não ficam abertas no computador: as chamadas saem do container `cliente`, de dentro da rede `vinheria.local`. Os dados ficam em memória, então `docker compose restart estoque pedidos` apaga os pedidos e volta o estoque ao inicial. Para desligar tudo: `docker compose down`.
 
 ### Usuários de teste
 

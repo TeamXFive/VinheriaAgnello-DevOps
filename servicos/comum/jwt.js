@@ -25,7 +25,7 @@ function validarToken(token, segredo) {
   try {
     if (JSON.parse(Buffer.from(cabecalho, 'base64url')).alg !== 'HS256') return null;
     const dados = JSON.parse(Buffer.from(corpo, 'base64url'));
-    if (!dados.exp || dados.exp < Math.floor(Date.now() / 1000)) return null;
+    if (!Number.isFinite(dados.exp) || dados.exp <= Math.floor(Date.now() / 1000)) return null;
     return dados;
   } catch {
     return null;
