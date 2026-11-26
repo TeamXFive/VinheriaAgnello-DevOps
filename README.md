@@ -120,7 +120,3 @@ O relatório da atividade, com as capturas de tela e a reflexão final, está em
 | 556964 | Ivan Ramos Biagioni |
 | 558703 | Luiz Henrique Sani |
 | 554364 | José Othon |
-
-## Uso de IA generativa
-
-Usamos um assistente de IA generativa para apoiar a escrita do código, dos arquivos de configuração e do texto do relatório. Rodamos todo o ambiente, e as capturas de tela vêm dessa execução.
