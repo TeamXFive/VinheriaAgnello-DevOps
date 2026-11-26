@@ -89,6 +89,10 @@ docker compose --profile analise up -d wireshark   # Wireshark em http://localho
 
 No Wireshark, abra `/capturas/http.pcap` e use **Follow → HTTP Stream**: a senha do login e o JWT aparecem em texto puro, tanto do cliente para o Pedidos quanto do Pedidos para o Estoque. Em `/capturas/https.pcap` só aparecem o handshake TLS e dados cifrados (*Application Data*).
 
+## Relatório
+
+O relatório da atividade, com as capturas de tela e a reflexão final, está em [docs/Relatorio-Fase7-VinheriaAgnello.pdf](docs/Relatorio-Fase7-VinheriaAgnello.pdf).
+
 ## Estrutura
 
 ```
@@ -102,7 +106,7 @@ No Wireshark, abra `/capturas/http.pcap` e use **Follow → HTTP Stream**: a sen
 │   ├── pki/          # geração da CA e dos certificados
 │   └── jenkins/      # Jenkins com o job de deploy pronto
 ├── scripts/          # teste da API e captura de tráfego
-├── docs/evidencias/  # capturas de tela
+├── docs/            # relatório em PDF e capturas de tela (evidencias/)
 ├── Jenkinsfile
 └── docker-compose.yml
 ```
